@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SkyWatch – Weather App</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --sky: #0a0f2c;
+      --card: rgba(255,255,255,0.06);
+      --border: rgba(255,255,255,0.12);
+      --accent: #38bdf8;
+      --accent2: #818cf8;
+      --text: #e0f2fe;
+      --muted: rgba(224,242,254,0.5);
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--sky);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow-x: hidden;
+      padding: 24px;
+    }
+
+    /* Animated background blobs */
+    .bg {
+      position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none;
+    }
+    .blob {
+      position: absolute; border-radius: 50%; filter: blur(90px); opacity: 0.35;
+      animation: drift 12s ease-in-out infinite alternate;
+    }
+    .blob1 { width: 500px; height: 500px; background: #1e40af; top: -120px; left: -100px; animation-delay: 0s; }
+    .blob2 { width: 400px; height: 400px; background: #0891b2; bottom: -100px; right: -80px; animation-delay: -4s; }
+    .blob3 { width: 300px; height: 300px; background: #4338ca; top: 40%; left: 50%; animation-delay: -8s; }
+
+    @keyframes drift {
+      from { transform: translate(0, 0) scale(1); }
+      to   { transform: translate(30px, 20px) scale(1.08); }
+    }
+
+    .app {
+      position: relative; z-index: 1;
+      width: 100%; max-width: 480px;
+      display: flex; flex-direction: column; gap: 20px;
+    }
+
+    /* Header */
+    .header { text-align: center; animation: fadeDown 0.6s ease both; }
+    .header h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(2.8rem, 8vw, 4rem);
+      letter-spacing: 4px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .header p { color: var(--muted); font-size: 0.85rem; margin-top: 4px; }
+
+    /* Search */
+    .search-box {
+      display: flex; gap: 10px;
+      animation: fadeDown 0.6s 0.1s ease both;
+    }
+    .search-box input {
+      flex: 1;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 20px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.3s, box-shadow 0.3s;
+      backdrop-filter: blur(12px);
+    }
+    .search-box input::placeholder { color: var(--muted); }
+    .search-box input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(56,189,248,0.15);
+    }
+    .search-box button {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none; border-radius: 14px;
+      padding: 14px 22px;
+      color: #fff; font-size: 1.2rem;
+      cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .search-box button:hover { transform: scale(1.05); box-shadow: 0 6px 20px rgba(56,189,248,0.4); }
+    .search-box button:active { transform: scale(0.97); }
+
+    /* Weather Card */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 32px 28px;
+      backdrop-filter: blur(20px);
+      display: none;
+      flex-direction: column; gap: 24px;
+      animation: fadeUp 0.5s ease both;
+    }
+    .card.show { display: flex; }
+
+    .city-row {
+      display: flex; justify-content: space-between; align-items: flex-start;
+    }
+    .city-name {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2.2rem; letter-spacing: 2px; line-height: 1;
+    }
+    .city-date { color: var(--muted); font-size: 0.8rem; margin-top: 4px; }
+    .weather-icon { font-size: 3.5rem; line-height: 1; }
+
+    .temp-row {
+      display: flex; align-items: flex-end; gap: 12px;
+    }
+    .temperature {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(4rem, 14vw, 6rem);
+      line-height: 1;
+      background: linear-gradient(135deg, #fff, var(--accent));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .feels-like { color: var(--muted); font-size: 0.85rem; padding-bottom: 10px; }
+
+    .condition {
+      font-size: 1.1rem; font-weight: 500; text-transform: capitalize;
+      color: var(--accent); letter-spacing: 0.5px;
+    }
+
+    .stats {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+    }
+    .stat {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 12px;
+      text-align: center;
+      transition: transform 0.2s;
+    }
+    .stat:hover { transform: translateY(-3px); }
+    .stat-icon { font-size: 1.4rem; margin-bottom: 6px; }
+    .stat-val { font-size: 1.1rem; font-weight: 500; }
+    .stat-label { font-size: 0.7rem; color: var(--muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* Error */
+    .error-msg {
+      background: rgba(239,68,68,0.12);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 14px; padding: 14px 20px;
+      color: #fca5a5; font-size: 0.9rem;
+      display: none; text-align: center;
+      animation: fadeUp 0.4s ease both;
+    }
+    .error-msg.show { display: block; }
+
+    /* Loading */
+    .loader {
+      display: none; justify-content: center; align-items: center; gap: 8px; padding: 20px;
+    }
+    .loader.show { display: flex; }
+    .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--accent); animation: bounce 1.2s infinite ease-in-out;
+    }
+    .dot:nth-child(2) { animation-delay: 0.2s; background: var(--accent2); }
+    .dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; }
+      40% { transform: scale(1.1); opacity: 1; }
+    }
+
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .api-note {
+      text-align: center; font-size: 0.75rem; color: var(--muted);
+      background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+      border-radius: 10px; padding: 10px 16px;
+      animation: fadeDown 0.6s 0.3s ease both;
+    }
+    .api-note span { color: var(--accent); font-weight: 500; }
+  </style>
+</head>
+<body>
+
+<div class="bg">
+  <div class="blob blob1"></div>
+  <div class="blob blob2"></div>
+  <div class="blob blob3"></div>
+</div>
+
+<div class="app">
+  <div class="header">
+    <h1>SkyWatch</h1>
+    <p>Real-time weather at your fingertips</p>
+  </div>
+
+  <div class="api-note">
+    🔑 Paste your API key in the code where it says <span>YOUR_API_KEY_HERE</span>
+  </div>
+
+  <div class="search-box">
+    <input type="text" id="cityInput" placeholder="Search city... e.g. London" />
+    <button onclick="getWeather()">🔍</button>
+  </div>
+
+  <div class="loader" id="loader">
+    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+  </div>
+
+  <div class="error-msg" id="errorMsg">⚠️ City not found. Please try again.</div>
+
+  <div class="card" id="weatherCard">
+    <div class="city-row">
+      <div>
+        <div class="city-name" id="cityName">—</div>
+        <div class="city-date" id="cityDate">—</div>
+      </div>
+      <div class="weather-icon" id="weatherIcon">🌤️</div>
+    </div>
+
+    <div>
+      <div class="temp-row">
+        <div class="temperature" id="temperature">—</div>
+        <div class="feels-like" id="feelsLike">Feels like —</div>
+      </div>
+      <div class="condition" id="condition">—</div>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-icon">💧</div>
+        <div class="stat-val" id="humidity">—</div>
+        <div class="stat-label">Humidity</div>
+      </div>
+      <div class="stat">
+        <div class="stat-icon">🌬️</div>
+        <div class="stat-val" id="wind">—</div>
+        <div class="stat-label">Wind</div>
+      </div>
+      <div class="stat">
+        <div class="stat-icon">👁️</div>
+        <div class="stat-val" id="visibility">—</div>
+        <div class="stat-label">Visibility</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // 🔑 PASTE YOUR API KEY FROM openweathermap.org HERE:
+  const API_KEY = "a547ada526d17577a83e97c7ac45667f";
+
+  const input = document.getElementById("cityInput");
+  input.addEventListener("keydown", e => { if (e.key === "Enter") getWeather(); });
+
+  function getWeatherIcon(id) {
+    if (id >= 200 && id < 300) return "⛈️";
+    if (id >= 300 && id < 400) return "🌦️";
+    if (id >= 500 && id < 600) return "🌧️";
+    if (id >= 600 && id < 700) return "❄️";
+    if (id >= 700 && id < 800) return "🌫️";
+    if (id === 800) return "☀️";
+    if (id === 801) return "🌤️";
+    if (id === 802) return "⛅";
+    return "🌥️";
+  }
+
+  function formatDate() {
+    return new Date().toLocaleDateString("en-US", {
+      weekday: "long", month: "long", day: "numeric"
+    });
+  }
+
+  async function getWeather() {
+    const city = input.value.trim();
+    if (!city) return;
+
+    const card = document.getElementById("weatherCard");
+    const loader = document.getElementById("loader");
+    const errorMsg = document.getElementById("errorMsg");
+
+    card.classList.remove("show");
+    errorMsg.classList.remove("show");
+    loader.classList.add("show");
+
+    try {
+      const res = await fetch(
+        `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${API_KEY}&units=metric`
+      );
+      if (!res.ok) throw new Error("City not found");
+      const data = await res.json();
+
+      document.getElementById("cityName").textContent = `${data.name}, ${data.sys.country}`;
+      document.getElementById("cityDate").textContent = formatDate();
+      document.getElementById("weatherIcon").textContent = getWeatherIcon(data.weather[0].id);
+      document.getElementById("temperature").textContent = `${Math.round(data.main.temp)}°`;
+      document.getElementById("feelsLike").textContent = `Feels like ${Math.round(data.main.feels_like)}°C`;
+      document.getElementById("condition").textContent = data.weather[0].description;
+      document.getElementById("humidity").textContent = `${data.main.humidity}%`;
+      document.getElementById("wind").textContent = `${Math.round(data.wind.speed)} m/s`;
+      document.getElementById("visibility").textContent = `${(data.visibility / 1000).toFixed(1)} km`;
+
+      loader.classList.remove("show");
+      card.classList.add("show");
+    } catch (err) {
+      loader.classList.remove("show");
+      errorMsg.classList.add("show");
+    }
+  }
+</script>
+</body>
+</html>
